@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<title>GlowBite</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f1ec;
+  --card:#ffffff;
+  --accent:#c8a97e;
+  --dark:#3b2f2f;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',sans-serif;background:linear-gradient(120deg,#f6f1ec,#efe5d8);color:var(--dark);}
+.center{height:100vh;display:flex;align-items:center;justify-content:center;}
+.login-card{background:var(--card);padding:36px;width:360px;border-radius:24px;box-shadow:0 25px 50px rgba(0,0,0,.15);}
+.login-card h1{text-align:center;margin-bottom:20px;}
+input,select,button,textarea{width:100%;padding:14px;margin:10px 0;border-radius:14px;border:1px solid #ccc;font-size:14px;}
+button{background:var(--accent);color:#fff;border:none;cursor:pointer;transition:.3s;}
+button:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.2);}
+
+/* APP */
+#app{display:none;}
+nav{background:var(--accent);color:white;padding:20px 30px;display:flex;justify-content:space-between;align-items:center;}
+.container{padding:40px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:25px;}
+.card{background:rgba(255,255,255,0.3);backdrop-filter:blur(10px);padding:28px;border-radius:24px;box-shadow:0 12px 30px rgba(0,0,0,.12);cursor:pointer;transition:.3s;position:relative;}
+.card:hover{transform:translateY(-8px);}
+.card h3{margin-top:0;}
+.card p{font-size:14px;opacity:.85;}
+.inner{background:white;padding:35px;border-radius:24px;box-shadow:0 15px 40px rgba(0,0,0,.15);}
+.back{margin-bottom:20px;cursor:pointer;color:var(--accent);}
+
+/* Recepti */
+.recipe{display:flex;gap:15px;align-items:center;margin-bottom:15px;}
+.recipe img{width:80px;height:80px;border-radius:12px;object-fit:cover;}
+.recipe div{flex:1;}
+.recipe h4{margin:0 0 5px 0;}
+.recipe p{margin:0;font-size:13px;color:#555;}
+
+/* Forme */
+form{display:flex;flex-direction:column;gap:12px;margin-top:10px;}
+form input,form textarea,form select{padding:10px;border-radius:10px;border:1px solid #ccc;font-size:14px;}
+form button{padding:12px;border-radius:12px;background:var(--accent);color:white;border:none;cursor:pointer;transition:.3s;}
+form button:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(0,0,0,.2);}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="center">
+  <div class="login-card">
+    <h1>GlowBite</h1>
+    <input id="username" placeholder="Korisničko ime">
+    <input id="password" type="password" placeholder="Lozinka">
+    <select id="role">
+      <option value="">Izaberi ulogu</option>
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+      <option value="superadmin">SuperAdmin</option>
+    </select>
+    <button id="loginBtn">Login</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <nav>
+    <div id="title"></div>
+    <button id="logoutBtn">Logout</button>
+  </nav>
+  <div class="container">
+    <h2 id="welcome"></h2>
+    <div id="content"></div>
+  </div>
+</div>
+
+<script>
+const loginDiv=document.getElementById('login');
+const appDiv=document.getElementById('app');
+const username=document.getElementById('username');
+const password=document.getElementById('password');
+const roleSelect=document.getElementById('role');
+const title=document.getElementById('title');
+const welcome=document.getElementById('welcome');
+const content=document.getElementById('content');
+
+let currentRole='';
+let users=[
+  {username:'user1',role:'user'},
+  {username:'admin1',role:'admin'},
+  {username:'super1',role:'superadmin'}
+];
+let recipes=[
+  {
+    title:'Vegan Smoothie',
+    desc:'Zeleni smoothie za energiju',
+    img:'https://i.pinimg.com/736x/0a/0a/6f/0a0a6f7dee94711d852242a6e7f8ef29.jpg',
+    category:'Vegan'
+  },
+  {
+    title:'Quinoa Salad',
+    desc:'Salata sa povrćem i kvinojom',
+    img:'https://i.pinimg.com/736x/a3/27/1e/a3271eb5fef03ddb42a419e2c9c65322.jpg',
+    category:'Vegan'
+  },
+  {
+    title:'Avocado Toast',
+    desc:'Integralni hljeb sa avokadom',
+    img:'https://i.pinimg.com/1200x/40/c9/6d/40c96d4016f5e7bbd52910952bb10b0b.jpg',
+    category:'Vegan'
+  },
+  {
+    title:'Gluten Free Pancakes',
+    desc:'Palačinke bez glutena',
+    img:'https://i.pinimg.com/1200x/81/00/39/8100397ef3e98e13842711556d79d4e7.jpg',
+    category:'GlutenFree'
+  }
+];
+let favorites=[];
+
+
+// LOGIN
+document.getElementById('loginBtn').onclick=function(){
+  const u=username.value.trim();
+  const p=password.value.trim();
+  const r=roleSelect.value;
+  if(!u || !p || !r){alert('Popuni sva polja'); return;}
+  currentRole=r;
+  loginDiv.style.display='none';
+  appDiv.style.display='block';
+  title.innerText='GlowBite – '+r;
+  welcome.innerText='Dobrodošla, '+u;
+  showDashboard();
+};
+
+// LOGOUT
+document.getElementById('logoutBtn').onclick=function(){location.reload();}
+
+// CARD HELPER
+function card(titleText,desc,page){return `<div class="card" onclick="openPage('${page}')"><h3>${titleText}</h3><p>${desc}</p></div>`}
+
+// DASHBOARD
+function showDashboard(){
+  let html='<div class="grid">';
+  if(currentRole==='user'){
+    html+=card('🌱 Vegan','Biljni recepti','vegan');
+    html+=card('🌾 Bez glutena','Recepti bez glutena','gluten');
+    html+=card('✨ Glow','Lifestyle i wellness','glow');
+    html+=card('❤️ Favoriti','Sačuvani recepti','fav');
+  }
+  if(currentRole==='admin'){
+    html+=card('➕ Dodaj recept','Dodavanje novog recepta','add');
+    html+=card('✏️ Uredi','Uredi recepte','edit');
+    html+=card('📦 Kategorije','Pregled kategorija','cat');
+    html+=card('📊 Statistika','Pregled aktivnosti','stats');
+  }
+  if(currentRole==='superadmin'){
+    html+=card('👥 Korisnici','Lista korisnika','users');
+    html+=card('🔐 Uloge','Upravljanje ulogama','roles');
+    html+=card('⚙️ Sistem','Postavke sistema','system');
+    html+=card('📊 Izvještaji','Analitika i izvještaji','reports');
+  }
+  html+='</div>';
+  content.innerHTML=html;
+}
+
+// OPEN PAGE
+function openPage(page){
+  let html=`<div class="inner"><div class="back" onclick="showDashboard()">← Nazad</div><h2>${page.toUpperCase()}</h2>`;
+
+  // USER
+  if(currentRole==='user'){
+    if(page==='vegan'){
+      recipes.filter(r=>r.category==='Vegan').forEach(r=>{
+        html+=`<div class="recipe"><img src="${r.img}"><div><h4>${r.title}</h4><p>${r.desc}</p><button onclick="addFav('${r.title}')">❤️ Dodaj u favorite</button></div></div>`;
+      });
+    } else if(page==='gluten'){
+      recipes.filter(r=>r.category==='GlutenFree').forEach(r=>{
+        html+=`<div class="recipe"><img src="${r.img}"><div><h4>${r.title}</h4><p>${r.desc}</p><button onclick="addFav('${r.title}')">❤️ Dodaj u favorite</button></div></div>`;
+      });
+    } else if(page==='glow'){
+      html+=`<p>Glow savjeti i lifestyle:</p><ul><li>Zdrav doručak</li><li>Vježbanje i meditacija</li><li>Detox smoothie</li></ul>`;
+    } else if(page==='fav'){
+      if(favorites.length===0) html+='<p>Još nema favorita</p>';
+      else favorites.forEach(f=>{
+        html+=`<div class="recipe"><h4>${f}</h4></div>`;
+      });
+    }
+  }
+
+  // ADMIN
+  if(currentRole==='admin'){
+    if(page==='add'){
+      html+=`<form onsubmit="addRecipe(event)">
+        <input type="text" id="newTitle" placeholder="Naziv recepta" required>
+        <textarea id="newDesc" placeholder="Opis recepta" required></textarea>
+        <input type="url" id="newImg" placeholder="URL slike">
+        <select id="newCategory">
+          <option value="Vegan">Vegan</option>
+          <option value="GlutenFree">GlutenFree</option>
+          <option value="Glow">Glow</option>
+        </select>
+        <button type="submit">Dodaj recept</button>
+      </form>`;
+    } else if(page==='edit'){
+      recipes.forEach((r,i)=>{
+        html+=`<div class="recipe"><img src="${r.img}"><div><h4>${r.title}</h4><p>${r.desc}</p><button onclick="editRecipe(${i})">✏️ Uredi</button><button onclick="deleteRecipe(${i})">🗑️ Obriši</button></div></div>`;
+      });
+    } else if(page==='cat'){
+      const categories=['Vegan','GlutenFree','Glow'];
+      categories.forEach(cat=>{
+        const count=recipes.filter(r=>r.category===cat).length;
+        html+=`<div class="recipe"><h4>${cat}</h4><p>Broj recepata: ${count}</p></div>`;
+      });
+    } else if(page==='stats'){
+      const totalUsers=users.length;
+      const totalRecipes=recipes.length;
+      const totalFav=favorites.length;
+      html+=`<p>Broj korisnika: ${totalUsers}</p><p>Broj recepata: ${totalRecipes}</p><p>Broj favorita: ${totalFav}</p>`;
+    }
+  }
+
+  // SUPERADMIN
+  if(currentRole==='superadmin'){
+    if(page==='users'){
+      users.forEach((u,i)=>{
+        html+=`<div class="recipe"><h4>${u.username}</h4><button onclick="deleteUser(${i})">🗑️ Obriši</button></div>`;
+      });
+    } else if(page==='roles'){
+      users.forEach((u,i)=>{
+        html+=`<div class="recipe"><h4>${u.username}</h4><select onchange="changeRole(${i},this.value)">
+        <option value="user"${u.role==='user'?' selected':''}>User</option>
+        <option value="admin"${u.role==='admin'?' selected':''}>Admin</option>
+        <option value="superadmin"${u.role==='superadmin'?' selected':''}>SuperAdmin</option>
+        </select></div>`;
+      });
+    } else if(page==='system'){
+      html+=`<p>Postavke sistema:</p>
+      <label>Opcija 1 <input type="checkbox" checked></label>
+      <label>Opcija 2 <input type="checkbox"></label>`;
+    } else if(page==='reports'){
+      const catCounts={'Vegan':0,'GlutenFree':0,'Glow':0};
+      recipes.forEach(r=>catCounts[r.category]++);
+      html+=`<p>Ukupno korisnika: ${users.length}</p>
+      <p>Ukupno recepata: ${recipes.length}</p>
+      <p>Recepata po kategoriji:</p>
+      <ul>
+        <li>Vegan: ${catCounts['Vegan']}</li>
+        <li>GlutenFree: ${catCounts['GlutenFree']}</li>
+        <li>Glow: ${catCounts['Glow']}</li>
+      </ul>`;
+    }
+  }
+
+  html+='</div>';
+  content.innerHTML=html;
+}
+
+// USER FUNCTIONS
+function addFav(title){if(!favorites.includes(title)){favorites.push(title);alert(title+' dodan u favorite!');}else{alert('Već je u favoritima');}}
+
+// ADMIN FUNCTIONS
+function addRecipe(e){
+  e.preventDefault();
+  const title=document.getElementById('newTitle').value;
+  const desc=document.getElementById('newDesc').value;
+  const img=document.getElementById('newImg').value || 'https://images.unsplash.com/photo-1604908177522-61c7d3d18690?auto=format&fit=crop&w=80&h=80&q=80';
+  const category=document.getElementById('newCategory').value;
+  recipes.push({title,desc,img,category});
+  alert('Recept dodan!');
+  showDashboard();
+}
+
+function editRecipe(i){
+  const r=recipes[i];
+  const newTitle=prompt('Naziv recepta:',r.title);
+  const newDesc=prompt('Opis recepta:',r.desc);
+  const newCategory=prompt('Kategorija (Vegan/GlutenFree/Glow):',r.category);
+  if(newTitle && newDesc && newCategory){recipes[i]={title:newTitle,desc:newDesc,img:r.img,category:newCategory};alert('Recept ažuriran'); showDashboard();}
+}
+
+function deleteRecipe(i){if(confirm('Obrisati recept?')){recipes.splice(i,1);showDashboard();}}
+
+// SUPERADMIN FUNCTIONS
+function deleteUser(i){if(confirm('Obrisati korisnika?')){users.splice(i,1);openPage('users');}}
+function changeRole(i,role){users[i].role=role;openPage('roles');}
+
+</script>
+</body>
+</html>
+
